@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta "Emergency SOS & Safety" (ui-ux-pro-max), igual que el prototipo web -->
+<resources>
+    <color name="primario">#2563EB</color>
+    <color name="primario_osc">#1D4ED8</color>
+    <color name="primario_suave">#EFF4FF</color>
+    <color name="peligro">#DC2626</color>
+    <color name="peligro_suave">#FEF2F2</color>
+    <color name="aviso">#D97706</color>
+    <color name="aviso_suave">#FFFBEB</color>
+    <color name="ok">#16A34A</color>
+    <color name="ok_suave">#F0FDF4</color>
+    <color name="oro">#F5B800</color>
+    <color name="oro_osc">#8A6100</color>
+    <color name="oro_suave">#FFF7D6</color>
+    <color name="texto">#0F172A</color>
+    <color name="texto_2">#475569</color>
+    <color name="texto_3">#94A3B8</color>
+    <color name="borde">#E2E8F0</color>
+    <color name="fondo">#F8FAFC</color>
+    <color name="marino">#0F172A</color>
+    <color name="marino_2">#1E3A8A</color>
+    <color name="blanco">#FFFFFF</color>
+    <color name="azul_claro">#DBEAFE</color>
+</resources>

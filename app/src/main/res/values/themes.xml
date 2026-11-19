@@ -1,0 +1,78 @@
+<resources>
+    <!-- Tema único claro -->
+    <style name="Theme.VecinosOtello" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/primario</item>
+        <item name="colorOnPrimary">@color/blanco</item>
+        <item name="colorPrimaryContainer">@color/primario_suave</item>
+        <item name="colorOnPrimaryContainer">@color/primario_osc</item>
+        <item name="colorError">@color/peligro</item>
+        <item name="android:colorBackground">@color/fondo</item>
+        <item name="android:windowBackground">@color/fondo</item>
+        <item name="android:textColorPrimary">@color/texto</item>
+        <item name="android:textColorSecondary">@color/texto_2</item>
+        <item name="android:statusBarColor">@color/blanco</item>
+        <item name="android:navigationBarColor">@color/blanco</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="bottomSheetDialogTheme">@style/HojaDialogo</item>
+    </style>
+
+    <style name="Theme.VecinosOtello.Login">
+        <item name="android:windowBackground">@drawable/bg_login</item>
+        <item name="android:statusBarColor">@color/marino_2</item>
+        <item name="android:navigationBarColor">@color/marino</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Hojas que suben desde abajo, con esquinas redondeadas -->
+    <style name="HojaDialogo" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/HojaModal</item>
+    </style>
+    <style name="HojaModal" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="backgroundTint">@color/blanco</item>
+        <item name="shapeAppearance">@style/HojaForma</item>
+    </style>
+    <style name="HojaForma">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">26dp</item>
+        <item name="cornerSizeTopRight">26dp</item>
+    </style>
+
+    <!-- Textos -->
+    <style name="Titulo">
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Subtitulo">
+        <item name="android:textColor">@color/texto_2</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Botones de la barra inferior -->
+    <style name="BotonBarra">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+    <style name="IconoBarra">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="tint">@color/texto_2</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+    <style name="TextoBarra">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:textColor">@color/texto_2</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:maxLines">1</item>
+    </style>
+</resources>

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/blanco"
+    android:clipChildren="false"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <!-- Barra superior -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/blanco"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
+
+        <TextView
+            android:id="@+id/avatar"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_avatar"
+            android:gravity="center"
+            android:textColor="@color/oro_osc"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Titulo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pje. Otello"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/total"
+                style="@style/Subtitulo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/salir"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_boton_icono"
+            android:contentDescription="Cerrar sesión"
+            android:src="@drawable/ic_salir"
+            app:tint="@color/texto" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/mapa"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Leyenda -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:background="@drawable/bg_leyenda"
+            android:elevation="3dp"
+            android:orientation="vertical"
+            android:paddingHorizontal="11dp"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:id="@+id/leyendaVecina"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawablePadding="6dp"
+                android:text="Casa vecina"
+                android:textColor="@color/texto"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/leyendaMia"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:drawablePadding="6dp"
+                android:text="Mi casa"
+                android:textColor="@color/texto"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/leyendaAlerta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:drawablePadding="6dp"
+                android:text="Con alerta"
+                android:textColor="@color/texto"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Ir a mi casa -->
+        <ImageButton
+            android:id="@+id/irMiCasa"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="12dp"
+            android:background="@drawable/bg_boton_icono"
+            android:contentDescription="Ir a mi casa"
+            android:elevation="3dp"
+            android:src="@drawable/ic_ubicar"
+            app:tint="@color/primario" />
+
+        <!-- Aviso de alerta enviada -->
+        <TextView
+            android:id="@+id/aviso"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top"
+            android:layout_marginStart="72dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:accessibilityLiveRegion="assertive"
+            android:background="@drawable/bg_aviso"
+            android:drawableStart="@drawable/ic_sirena"
+            android:drawablePadding="8dp"
+            android:drawableTint="@color/blanco"
+            android:elevation="6dp"
+            android:gravity="center_vertical"
+            android:padding="12dp"
+            android:textColor="@color/blanco"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Tarjeta del chat -->
+        <LinearLayout
+            android:id="@+id/abrirChat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_chat_card"
+            android:clickable="true"
+            android:elevation="8dp"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="68dp"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="12dp">
+
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_burbuja_card">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_chat"
+                    app:tint="@color/blanco" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Chat del vecindario"
+                    android:textColor="@color/blanco"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Habla con todo el Pje. Otello"
+                    android:textColor="@color/azul_claro"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/nuevos"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_insignia"
+                android:gravity="center"
+                android:textColor="@color/primario_osc"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Barra inferior: la alerta va al centro y sobresale -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/blanco"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:elevation="4dp"
+        android:gravity="bottom"
+        android:orientation="horizontal"
+        android:paddingHorizontal="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout android:id="@+id/bIrCasa" style="@style/BotonBarra">
+            <ImageView style="@style/IconoBarra" android:src="@drawable/ic_casa" />
+            <TextView style="@style/TextoBarra" android:text="Ir a casa" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/bEventos" style="@style/BotonBarra">
+            <ImageView style="@style/IconoBarra" android:src="@drawable/ic_calendario" />
+            <TextView style="@style/TextoBarra" android:text="Eventos" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/bAlerta"
+            style="@style/BotonBarra"
+            android:clipChildren="false">
+
+            <FrameLayout
+                android:layout_width="62dp"
+                android:layout_height="62dp"
+                android:layout_marginTop="-28dp"
+                android:background="@drawable/bg_circulo_alerta"
+                android:elevation="8dp">
+
+                <ImageView
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_sirena"
+                    app:tint="@color/blanco" />
+            </FrameLayout>
+
+            <TextView style="@style/TextoBarra" android:text="Alerta" android:textColor="@color/peligro" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/bEmergencias" style="@style/BotonBarra">
+            <ImageView style="@style/IconoBarra" android:src="@drawable/ic_telefono" />
+            <TextView style="@style/TextoBarra" android:text="Emergencias" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/bMas" style="@style/BotonBarra">
+            <ImageView style="@style/IconoBarra" android:src="@drawable/ic_cuadros" />
+            <TextView style="@style/TextoBarra" android:text="Más" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

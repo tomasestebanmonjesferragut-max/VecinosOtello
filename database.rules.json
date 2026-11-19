@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "mensajes": {
+      ".read": "auth != null",
+      ".indexOn": ["fecha"],
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['quien', 'texto', 'alerta', 'uid', 'fecha'])",
+        "quien": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "texto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+        "alerta": { ".validate": "newData.isBoolean()" },
+        "uid": { ".validate": "newData.val() === auth.uid" },
+        "fecha": { ".validate": "newData.val() === now" },
+        "$otro": { ".validate": false }
+      }
+    }
+  }
+}

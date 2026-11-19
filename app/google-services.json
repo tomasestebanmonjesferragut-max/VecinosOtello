@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1046384762233",
+    "firebase_url": "https://vecinosotello-default-rtdb.firebaseio.com",
+    "project_id": "vecinosotello",
+    "storage_bucket": "vecinosotello.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1046384762233:android:2ee8c14d33629a8aaf23a8",
+        "android_client_info": {
+          "package_name": "com.example.vecinosotello"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOKpXRXjqMcRiI5C7wltMayr-WKNiNlm0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
