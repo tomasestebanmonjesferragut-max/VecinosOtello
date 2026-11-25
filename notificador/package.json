@@ -1,0 +1,13 @@
+{
+  "name": "vecinos-otello-notificador",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Envía por FCM la notificación de cada anuncio oficial nuevo (entorno de confianza).",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "firebase-admin": "14.5.1"
+  }
+}
