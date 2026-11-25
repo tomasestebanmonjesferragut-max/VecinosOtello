@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
@@ -16,20 +17,20 @@ import android.os.IBinder;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 
-import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.Query;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import java.util.UUID;
 
 /**
- * Sigue escuchando el chat en Realtime Database aunque la app esté cerrada y avisa con una
- * notificación cuando otro vecino manda una alerta. Las súper urgentes vibran fuerte con alarma.
- * Es gratis (no usa Cloud Functions); Android exige mostrar una notificación fija mientras vigila.
+ * Servicio en primer plano que mantiene abierta la conexión MQTT de las alertas, para recibirlas
+ * con la app en segundo plano. Cuando llega una alerta de otro vecino muestra una notificación local:
+ * las súper urgentes vibran fuerte con sonido de alarma. Android exige mostrar una notificación fija.
+ * Límite: si el sistema o el usuario cierran la app a la fuerza, la conexión se corta (ver informe).
  */
 public class VigilanciaService extends Service {
 
@@ -38,9 +39,8 @@ public class VigilanciaService extends Service {
     private static final long[] PATRON_URGENTE = {0, 1000, 400, 1000, 400, 1000, 400, 1000};
     private static final long[] PATRON_ALERTA = {0, 300, 200, 300};
 
-    private Query consulta;
-    private ChildEventListener escucha;
-    private int siguienteId = 100;
+    private final ClienteMqtt.Oyente oyente = this::avisar;
+    private final ClienteMqtt.OyenteEstado oyenteEstado = (c, d) -> actualizarFija(d);
 
     public static void iniciar(Context ctx) {
         ContextCompat.startForegroundService(ctx, new Intent(ctx, VigilanciaService.class));
@@ -58,50 +58,41 @@ public class VigilanciaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        ServiceCompat.startForeground(this, ID_FIJA, notificacionFija(),
+        ServiceCompat.startForeground(this, ID_FIJA, notificacionFija("Conectando con el servidor de alertas…"),
                 Build.VERSION.SDK_INT >= 34 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE : 0);
-        if (Chat.miUid() == null) { // sin sesión no se puede leer el chat
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null) { // sin sesión no hay a quién avisar
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (escucha == null) escuchar();
+        ClienteMqtt c = ClienteMqtt.get();
+        c.agregar(oyente);       // un Set: registrar dos veces no duplica avisos
+        c.agregar(oyenteEstado);
+        c.conectar("otello-" + u.getUid().substring(0, 8) + "-" + idDispositivo());
         return START_STICKY;
     }
 
-    /** Solo los mensajes que lleguen desde ahora (no avisa de alertas viejas). */
-    private void escuchar() {
-        consulta = Chat.mensajes().orderByChild("fecha").startAt(System.currentTimeMillis());
-        escucha = new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot d, String anterior) {
-                Boolean alerta = d.child("alerta").getValue(Boolean.class);
-                String texto = d.child("texto").getValue(String.class);
-                String quien = d.child("quien").getValue(String.class);
-                String uid = d.child("uid").getValue(String.class);
-                if (!Boolean.TRUE.equals(alerta) || texto == null || quien == null) return;
-                if (uid != null && uid.equals(Chat.miUid())) return; // mi propia alerta
-                avisar(quien, texto, Datos.esUrgente(texto));
-            }
-
-            @Override public void onChildChanged(@NonNull DataSnapshot d, String anterior) { }
-            @Override public void onChildRemoved(@NonNull DataSnapshot d) { }
-            @Override public void onChildMoved(@NonNull DataSnapshot d, String anterior) { }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                stopSelf(); // se cerró la sesión o se perdió el permiso
-            }
-        };
-        consulta.addChildEventListener(escucha);
+    /** Identificador estable de este teléfono, para que dos teléfonos del mismo vecino no se desconecten entre sí. */
+    private String idDispositivo() {
+        SharedPreferences p = getSharedPreferences("vigilancia", MODE_PRIVATE);
+        String id = p.getString("dispositivo", null);
+        if (id == null) {
+            id = UUID.randomUUID().toString().substring(0, 8);
+            p.edit().putString("dispositivo", id).apply();
+        }
+        return id;
     }
 
-    private void avisar(String quien, String texto, boolean urgente) {
+    private void avisar(Alerta a) {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u != null && u.getUid().equals(a.uid)) return; // mi propia alerta
+        boolean urgente = a.esUrgente();
         NotificationCompat.Builder b = new NotificationCompat.Builder(this, urgente ? CANAL_URGENTE : CANAL_ALERTA)
                 .setSmallIcon(R.drawable.ic_sirena)
                 .setColor(ContextCompat.getColor(this, R.color.peligro))
-                .setContentTitle((urgente ? "EMERGENCIA · " : "Alerta · ") + quien)
-                .setContentText(texto)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(texto))
+                .setContentTitle(urgente ? "Alerta comunitaria · EMERGENCIA" : "Alerta comunitaria")
+                .setContentText(a.descripcion())
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(a.descripcion()))
                 .setCategory(urgente ? NotificationCompat.CATEGORY_ALARM : NotificationCompat.CATEGORY_MESSAGE)
                 .setPriority(urgente ? NotificationCompat.PRIORITY_MAX : NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -109,13 +100,12 @@ public class VigilanciaService extends Service {
                 .setAutoCancel(true)
                 .setContentIntent(abrirApp());
         if (urgente) b.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM));
-        NotificationManager nm = getSystemService(NotificationManager.class);
         try {
-            nm.notify(siguienteId++, b.build());
+            getSystemService(NotificationManager.class).notify(a.id.hashCode(), b.build());
         } catch (SecurityException e) {
-            // Sin permiso de notificaciones: igual se vibra abajo si es urgente.
+            // Permiso de notificaciones negado: la alerta igual se ve en el mapa y se vibra si es urgente.
         }
-        if (urgente) vibrarFuerte(); // por si el usuario bajó la vibración del canal
+        if (urgente) vibrarFuerte();
     }
 
     private void vibrarFuerte() {
@@ -130,12 +120,21 @@ public class VigilanciaService extends Service {
         return PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
-    private Notification notificacionFija() {
+    private void actualizarFija(String detalle) {
+        try {
+            getSystemService(NotificationManager.class).notify(ID_FIJA, notificacionFija(detalle));
+        } catch (SecurityException e) {
+            // Sin permiso de notificaciones no se puede actualizar el texto; el servicio sigue funcionando.
+        }
+    }
+
+    private Notification notificacionFija(String detalle) {
         return new NotificationCompat.Builder(this, CANAL_FIJO)
                 .setSmallIcon(R.drawable.ic_escudo)
                 .setContentTitle("Vigilancia del pasaje activa")
-                .setContentText("Te avisaremos si un vecino manda una alerta.")
+                .setContentText(detalle)
                 .setOngoing(true)
+                .setOnlyAlertOnce(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .setContentIntent(abrirApp())
                 .build();
@@ -155,7 +154,6 @@ public class VigilanciaService extends Service {
         urgente.setDescription("Pedido de ayuda, robo, incendio o emergencia médica");
         urgente.enableVibration(true);
         urgente.setVibrationPattern(PATRON_URGENTE);
-        urgente.setBypassDnd(true);
         urgente.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         Uri alarma = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         urgente.setSound(alarma, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -168,7 +166,10 @@ public class VigilanciaService extends Service {
 
     @Override
     public void onDestroy() {
-        if (consulta != null && escucha != null) consulta.removeEventListener(escucha);
+        ClienteMqtt c = ClienteMqtt.get();
+        c.quitar(oyente);
+        c.quitar(oyenteEstado);
+        c.desconectar(); // libera la conexión al cerrar sesión
         super.onDestroy();
     }
 

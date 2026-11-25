@@ -5,9 +5,7 @@ import android.animation.ValueAnimator;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.PowerManager;
-import android.provider.Settings;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -18,11 +16,14 @@ import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.provider.Settings;
+import android.text.InputType;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -31,6 +32,7 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -49,53 +51,75 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.firebase.auth.FirebaseAuth;
-
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/** Pantalla principal: mapa del pasaje, chat, anuncios, ventas, alarma MQTT y más funciones. */
 public class MapaActivity extends AppCompatActivity implements OnMapReadyCallback {
+
+    /** Una sola instancia: publica por MQTT, guarda el registro en Firebase y evita alarmas repetidas. */
+    static final EnviadorAlertas ENVIADOR =
+            new EnviadorAlertas(ClienteMqtt.get(), new RegistroAlertas(), new Antirrebote(60_000));
 
     private GoogleMap mapa;
     private final List<Marker> marcadores = new ArrayList<>();
     private Circle brillo;
     private ValueAnimator animBrillo;
     private LatLngBounds zona;
-    private TextView aviso, nuevos;
+    private TextView aviso, nuevos, total;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private Chat.Escucha escucha;
+    private Chat.Escucha escuchaChat, escuchaAlertas;
+    private List<RegistroAlertas.Item> historial = new ArrayList<>();
+    private boolean mqttConectado;
+    private String mqttDetalle = "";
+
+    private final ClienteMqtt.Oyente oyenteAlertas = this::alertaRecibida;
+    private final ClienteMqtt.OyenteEstado oyenteEstado = (c, d) -> {
+        mqttConectado = c;
+        mqttDetalle = d;
+        mostrarEstado();
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Datos.miNumero == null) { // la app se cerró y perdió la sesión
+        if (!Sesion.activa()) { // la app se cerró y perdió el perfil en memoria
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
         setContentView(R.layout.activity_mapa);
 
-        ((TextView) findViewById(R.id.avatar)).setText(Datos.miNumero);
-        ((TextView) findViewById(R.id.total)).setText(Datos.casas.size() + " casas del vecindario");
+        ((TextView) findViewById(R.id.avatar)).setText(Sesion.vivienda);
+        ((TextView) findViewById(R.id.saludo)).setText("Hola, " + Sesion.nombre);
+        total = findViewById(R.id.total);
         aviso = findViewById(R.id.aviso);
         nuevos = findViewById(R.id.nuevos);
         puntoLeyenda(R.id.leyendaVecina, R.color.primario);
         puntoLeyenda(R.id.leyendaMia, R.color.oro);
         puntoLeyenda(R.id.leyendaAlerta, R.color.peligro);
 
-        findViewById(R.id.salir).setOnClickListener(v -> {
-            VigilanciaService.detener(this);
-            FirebaseAuth.getInstance().signOut();
-            Datos.miNumero = null;
-            finish();
+        findViewById(R.id.salir).setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle("¿Cerrar sesión?")
+                .setMessage("Dejarás de recibir alertas en este teléfono.")
+                .setPositiveButton("Cerrar sesión", (d, w) -> {
+                    VigilanciaService.detener(this);
+                    Sesion.cerrar();
+                    startActivity(new Intent(this, LoginActivity.class));
+                    finish();
+                })
+                .setNegativeButton("Cancelar", null).show());
+        findViewById(R.id.irMiCasa).setOnClickListener(v -> {
+            Datos.Casa mia = Datos.miCasa();
+            if (mia == null) avisoCorto("Tu vivienda #" + Sesion.vivienda + " no está dibujada en el mapa.");
+            else irA(mia);
         });
-        findViewById(R.id.irMiCasa).setOnClickListener(v -> irA(Datos.miCasa()));
         findViewById(R.id.abrirChat).setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
         findViewById(R.id.bAlerta).setOnClickListener(v -> hojaAlerta());
-        findViewById(R.id.bIrCasa).setOnClickListener(v -> hojaIrACasa());
-        findViewById(R.id.bEventos).setOnClickListener(v -> hojaEventos());
+        findViewById(R.id.bAnuncios).setOnClickListener(v -> startActivity(new Intent(this, AnunciosActivity.class)));
+        findViewById(R.id.bVentas).setOnClickListener(v -> startActivity(new Intent(this, VentasActivity.class)));
         findViewById(R.id.bEmergencias).setOnClickListener(v -> hojaEmergencias());
         findViewById(R.id.bMas).setOnClickListener(v -> hojaMas());
 
@@ -105,12 +129,15 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         activarAvisos();
     }
 
-    // ---------------- Avisos de emergencia ----------------
+    // ---------------- Permisos y vigilancia ----------------
 
     private final ActivityResultLauncher<String> pedirNotificaciones =
-            registerForActivityResult(new ActivityResultContracts.RequestPermission(), ok -> iniciarVigilancia());
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), ok -> {
+                if (!ok) avisoCorto("Sin permiso de notificaciones verás las alertas solo con la app abierta.");
+                iniciarVigilancia();
+            });
 
-    /** Pide permiso de notificaciones (Android 13+) y deja escuchando las alertas con la app cerrada. */
+    /** Pide permiso de notificaciones (Android 13+) y deja la conexión MQTT activa en segundo plano. */
     private void activarAvisos() {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this,
                 Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -134,32 +161,36 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    // ---------------- Escuchas (se liberan en onStop) ----------------
+
     @Override
     protected void onStart() {
         super.onStart();
         if (nuevos == null) return;
-        actualizarChat();
-        // Chat en tiempo real: contador de mensajes nuevos y alertas de otros vecinos en el mapa
-        escucha = Chat.escuchar(() -> {
-            if (Datos.mensajesLeidos < 0) Datos.mensajesLeidos = Datos.mensajes.size(); // lo anterior ya se vio
-            actualizarChat();
-        });
+        ClienteMqtt.get().agregar(oyenteAlertas);
+        ClienteMqtt.get().agregar(oyenteEstado);
+        long visto = getSharedPreferences("chat", MODE_PRIVATE).getLong("visto", 0);
+        escuchaChat = Chat.escuchar(Chat.PAGINA, (mensajes, mas) -> {
+            int sinLeer = 0; // mensajes de otros vecinos más nuevos que la última vez que abrí el chat
+            for (Chat.Mensaje m : mensajes) if (!m.mio && m.fecha != null && m.fecha > visto) sinLeer++;
+            nuevos.setText(String.valueOf(sinLeer));
+            nuevos.setVisibility(sinLeer > 0 ? View.VISIBLE : View.GONE);
+        }, null);
+        escuchaAlertas = RegistroAlertas.escuchar(items -> {
+            historial = items;
+            RegistroAlertas.marcarCasas(items, System.currentTimeMillis());
+            if (mapa != null) dibujarCasas();
+        }, this::avisoCorto);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (escucha != null) escucha.quitar();
-        escucha = null;
-    }
-
-    private void actualizarChat() {
-        int sinLeer = 0; // solo cuentan los mensajes nuevos de otros vecinos
-        for (int i = Math.max(0, Datos.mensajesLeidos); i < Datos.mensajes.size(); i++)
-            if (!Datos.mensajes.get(i).mio) sinLeer++;
-        nuevos.setText(String.valueOf(sinLeer));
-        nuevos.setVisibility(sinLeer > 0 ? View.VISIBLE : View.GONE);
-        if (mapa != null) dibujarCasas();
+        ClienteMqtt.get().quitar(oyenteAlertas);
+        ClienteMqtt.get().quitar(oyenteEstado);
+        if (escuchaChat != null) escuchaChat.quitar();
+        if (escuchaAlertas != null) escuchaAlertas.quitar();
+        escuchaChat = escuchaAlertas = null;
     }
 
     @Override
@@ -167,6 +198,15 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onDestroy();
         if (animBrillo != null) animBrillo.cancel();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    private void mostrarEstado() {
+        GradientDrawable punto = new GradientDrawable();
+        punto.setShape(GradientDrawable.OVAL);
+        punto.setColor(ContextCompat.getColor(this, mqttConectado ? R.color.ok : R.color.aviso));
+        punto.setSize(dp(8), dp(8));
+        total.setCompoundDrawablesRelativeWithIntrinsicBounds(punto, null, null, null);
+        total.setText("Vivienda #" + Sesion.vivienda + " · " + mqttDetalle);
     }
 
     private void puntoLeyenda(int id, int color) {
@@ -246,7 +286,7 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private String estado(Datos.Casa c) {
-        if (Datos.alertas.contains(c.n)) return "Con alerta";
+        if (Datos.alertas.contains(c.n)) return "Con alerta activa";
         if (Datos.vacaciones.contains(c.n)) return "De vacaciones";
         return "Tranquila";
     }
@@ -348,10 +388,11 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (Integer.valueOf(c.n).equals(m.getTag())) m.showInfoWindow();
     }
 
-    // ---------------- Botones ----------------
+    // ---------------- Alarma (MQTT) ----------------
 
     private void hojaAlerta() {
-        Hoja h = new Hoja(this, R.drawable.ic_sirena, Hoja.Tono.ROJO, "Activar alerta", "Avisa a todo el vecindario al instante.");
+        Hoja h = new Hoja(this, R.drawable.ic_sirena, Hoja.Tono.ROJO, "Activar alarma",
+                "Elige qué pasa. Te pediremos confirmar antes de avisar.");
         h.textoCerrar("Cancelar");
         GridLayout g = h.cuadricula();
         Object[][] tipos = {
@@ -360,45 +401,138 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
                 {R.drawable.ic_fuego, "Incendio o humo"}, {R.drawable.ic_pulso, "Emergencia médica"}};
         for (Object[] t : tipos) {
             String tipo = (String) t[1];
-            h.opcion(g, (int) t[0], Hoja.Tono.ROJO, tipo, v -> {
-                Datos.enviar(tipo + " en el N° " + Datos.miNumero, true);
-                Datos.eventos.add(0, new Datos.Evento(tipo, "N° " + Datos.miNumero + " · " + Datos.hora(), "alerta"));
-                dibujarCasas();
-                mostrarAviso(tipo + " · alerta enviada al vecindario");
-                h.cerrar();
-            });
+            h.opcion(g, (int) t[0], Hoja.Tono.ROJO, tipo, v -> { h.cerrar(); confirmarAlerta(tipo); });
+        }
+        Hoja.flecha(h.fila(R.drawable.ic_historial, Hoja.Tono.AZUL, "Historial de alertas",
+                "Alertas recientes y su estado", v -> { h.cerrar(); hojaHistorial(); }));
+        h.mostrar();
+    }
+
+    /** Paso 1 del flujo: confirmar para evitar activaciones por error. */
+    private void confirmarAlerta(String tipo) {
+        new AlertDialog.Builder(this)
+                .setTitle("¿Enviar alerta \"" + tipo + "\"?")
+                .setMessage("Tus vecinos verán:\n" + Sesion.nombre + " · Vivienda #" + Sesion.vivienda + " ha solicitado ayuda.")
+                .setPositiveButton("Enviar alerta", (d, w) -> ENVIADOR.activar(tipo, Sesion.uid, Sesion.nombre,
+                        Sesion.vivienda, System.currentTimeMillis(), this::estadoEnvio))
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    /** Muestra si la alerta está enviándose, enviada o no enviada (nunca un éxito falso). */
+    private void estadoEnvio(EnviadorAlertas.Estado e, Alerta a, String detalle) {
+        handler.removeCallbacksAndMessages(null);
+        aviso.setOnClickListener(null);
+        switch (e) {
+            case ESPERAR:
+                avisoCorto(detalle);
+                return;
+            case ENVIANDO:
+                mostrarAviso(detalle, R.color.aviso, 0);
+                return;
+            case ENVIADA:
+                Datos.Casa mia = Datos.miCasa();
+                if (mia != null) Datos.alertas.add(mia.n);
+                if (mapa != null) dibujarCasas();
+                mostrarAviso(a.tipo + " · " + detalle, R.color.peligro, 8000);
+                return;
+            case NO_ENVIADA:
+                mostrarAviso(detalle + " Toca para reintentar.", R.color.aviso, 0);
+                aviso.setOnClickListener(v -> ENVIADOR.enviar(a, this::estadoEnvio)); // mismo id: no se duplica
+        }
+    }
+
+    /** Alerta de otro vecino recibida por MQTT con la app abierta: aviso visual y casa en rojo. */
+    private void alertaRecibida(Alerta a) {
+        if (a.uid != null && a.uid.equals(Sesion.uid)) return;
+        Datos.Casa c = Datos.casaPorNumero(a.vivienda);
+        if (c != null) Datos.alertas.add(c.n);
+        if (mapa != null) dibujarCasas();
+        handler.removeCallbacksAndMessages(null);
+        mostrarAviso("Alerta comunitaria · " + a.descripcion() + " Toca para ver.", R.color.peligro, 15000);
+        aviso.setOnClickListener(v -> { aviso.setVisibility(View.GONE); hojaHistorial(); });
+        if (c != null) irA(c);
+    }
+
+    private void mostrarAviso(String texto, int color, long duracionMs) {
+        aviso.setText(texto);
+        aviso.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, color)));
+        aviso.setVisibility(View.VISIBLE);
+        if (duracionMs > 0) handler.postDelayed(() -> aviso.setVisibility(View.GONE), duracionMs);
+    }
+
+    private void hojaHistorial() {
+        Hoja h = new Hoja(this, R.drawable.ic_historial, Hoja.Tono.ROJO, "Historial de alertas",
+                Sesion.esAdmin() ? "Como administrador puedes marcarlas como atendidas o cerradas."
+                        : "Toca una alerta para confirmar que la viste.");
+        if (historial.isEmpty()) h.fila(R.drawable.ic_check, Hoja.Tono.VERDE, "Sin alertas recientes", "Todo tranquilo en el pasaje", null);
+        for (RegistroAlertas.Item i : historial) {
+            Alerta a = i.alerta;
+            boolean activa = Alerta.ACTIVA.equals(a.estado);
+            View f = h.fila(R.drawable.ic_sirena, activa ? Hoja.Tono.ROJO : Hoja.Tono.VERDE, a.tipo,
+                    Validaciones.identidad(a.nombre, a.vivienda) + " · " + Fechas.corta(a.fecha) + " · " + i.vistos
+                            + (i.vistos == 1 ? " vecino la vio" : " vecinos la vieron"),
+                    v -> { h.cerrar(); accionesAlerta(i); });
+            Hoja.derecha(f, a.estado.substring(0, 1).toUpperCase() + a.estado.substring(1),
+                    activa ? R.color.peligro : Alerta.ATENDIDA.equals(a.estado) ? R.color.aviso : R.color.ok);
+            ((TextView) f.findViewById(R.id.filaDerecha)).setTextSize(12);
         }
         h.mostrar();
     }
 
-    private void mostrarAviso(String texto) {
-        aviso.setText(texto);
-        aviso.setVisibility(View.VISIBLE);
-        handler.removeCallbacksAndMessages(null);
-        handler.postDelayed(() -> aviso.setVisibility(View.GONE), 8000);
+    private void accionesAlerta(RegistroAlertas.Item i) {
+        Alerta a = i.alerta;
+        Hoja h = new Hoja(this, R.drawable.ic_sirena, Hoja.Tono.ROJO, a.tipo, a.descripcion());
+        if (!i.laVi && !Sesion.uid.equals(a.uid))
+            h.fila(R.drawable.ic_ojo, Hoja.Tono.AZUL, "La vi", "Avisa al vecino que estás al tanto",
+                    v -> { RegistroAlertas.marcarVista(a.id); h.cerrar(); avisoCorto("Gracias, quedó registrado"); });
+        Datos.Casa c = Datos.casaPorNumero(a.vivienda);
+        if (c != null) h.fila(R.drawable.ic_ubicar, Hoja.Tono.AZUL, "Ver en el mapa", "Vivienda #" + a.vivienda,
+                v -> { h.cerrar(); irA(c); });
+        if (Sesion.esAdmin()) { // las reglas también lo exigen
+            if (Alerta.ACTIVA.equals(a.estado))
+                h.fila(R.drawable.ic_check, Hoja.Tono.AMBAR, "Marcar como atendida", "Alguien ya está ayudando",
+                        v -> cambiarEstado(h, a, Alerta.ATENDIDA));
+            if (!Alerta.CERRADA.equals(a.estado))
+                h.fila(R.drawable.ic_check, Hoja.Tono.VERDE, "Cerrar alerta", "La situación terminó",
+                        v -> cambiarEstado(h, a, Alerta.CERRADA));
+        }
+        h.mostrar();
     }
+
+    private void cambiarEstado(Hoja h, Alerta a, String estado) {
+        RegistroAlertas.cambiarEstado(a.id, estado, e -> {
+            avisoCorto(e == null ? "Alerta " + estado : e);
+            if (e == null) h.cerrar();
+        });
+    }
+
+    // ---------------- Otras hojas ----------------
 
     private void hojaIrACasa() {
         Datos.Casa mia = Datos.miCasa();
         LatLng destino = mia != null ? mia.pos : Datos.CRUCE;
         String ll = destino.latitude + "," + destino.longitude;
         Hoja h = new Hoja(this, R.drawable.ic_casa, Hoja.Tono.AZUL, "Llegar a mi casa",
-                "Destino: Pje. Otello " + Datos.miNumero + ", San Joaquín");
+                "Destino: Pje. Otello " + Sesion.vivienda + ", San Joaquín");
         Hoja.flecha(h.fila(R.drawable.ic_mapa, Hoja.Tono.VERDE, "Google Maps", "Ruta en auto hasta tu casa",
                 v -> abrir("https://www.google.com/maps/dir/?api=1&destination=" + ll + "&travelmode=driving")));
         Hoja.flecha(h.fila(R.drawable.ic_navegar, Hoja.Tono.AZUL, "Waze", "Navegación con tráfico en vivo",
                 v -> abrir("https://waze.com/ul?ll=" + ll + "&navigate=yes")));
-        h.fila(R.drawable.ic_ojo, Hoja.Tono.AMBAR, "Avisar que voy llegando", "Tus vecinos estarán atentos", v -> {
-            Datos.enviar("Voy llegando a casa, ¿me echan un ojo?", false);
-            avisoCorto("Aviso enviado al chat");
+        h.fila(R.drawable.ic_ojo, Hoja.Tono.AMBAR, "Avisar que voy llegando", "Se publica en el chat", v -> {
+            alChat("Voy llegando a casa, ¿me echan un ojo?");
             h.cerrar();
         });
         h.fila(R.drawable.ic_check, Hoja.Tono.VERDE, "Avisar que llegué bien", "Tranquiliza a tus vecinos", v -> {
-            Datos.enviar("Llegué bien a casa, gracias vecinos", false);
-            avisoCorto("Aviso enviado al chat");
+            alChat("Llegué bien a casa, gracias vecinos");
             h.cerrar();
         });
         h.mostrar();
+    }
+
+    private void alChat(String texto) {
+        Chat.enviar(texto, null, e -> avisoCorto(e));
+        avisoCorto("Publicado en el chat");
     }
 
     private void abrir(String url) {
@@ -411,48 +545,6 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void avisoCorto(String texto) {
         Toast.makeText(this, texto, Toast.LENGTH_SHORT).show();
-    }
-
-    private void hojaEventos() {
-        Hoja h = new Hoja(this, R.drawable.ic_calendario, Hoja.Tono.AZUL, "Eventos del barrio", "Lo que pasa en el pasaje y alrededores.");
-        for (Datos.Evento e : Datos.eventos) {
-            int icono = R.drawable.ic_calendario;
-            Hoja.Tono tono = Hoja.Tono.AZUL;
-            if ("alerta".equals(e.tipo)) { icono = R.drawable.ic_sirena; tono = Hoja.Tono.ROJO; }
-            else if ("reporte".equals(e.tipo)) { icono = R.drawable.ic_llave; tono = Hoja.Tono.AMBAR; }
-            else if ("agua".equals(e.tipo)) { icono = R.drawable.ic_gota; }
-            h.fila(icono, tono, e.titulo, e.detalle, null);
-        }
-        // Agregar un evento
-        LinearLayout fila = new LinearLayout(this);
-        fila.setOrientation(LinearLayout.HORIZONTAL);
-        EditText texto = new EditText(this);
-        texto.setHint("Agregar evento o aviso…");
-        texto.setBackgroundResource(R.drawable.bg_input_chat);
-        texto.setPadding(dp(16), 0, dp(16), 0);
-        texto.setTextSize(15);
-        texto.setSingleLine(true);
-        texto.setImeOptions(EditorInfo.IME_ACTION_DONE);
-        fila.addView(texto, new LinearLayout.LayoutParams(0, dp(48), 1));
-        TextView agregar = new TextView(this);
-        agregar.setText("Agregar");
-        agregar.setTextColor(Color.WHITE);
-        agregar.setTypeface(agregar.getTypeface(), android.graphics.Typeface.BOLD);
-        agregar.setGravity(android.view.Gravity.CENTER);
-        agregar.setPadding(dp(16), 0, dp(16), 0);
-        agregar.setBackgroundResource(R.drawable.bg_chat_card);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48));
-        lp.setMarginStart(dp(8));
-        fila.addView(agregar, lp);
-        h.contenido.addView(fila);
-        agregar.setOnClickListener(v -> {
-            String t = texto.getText().toString().trim();
-            if (t.isEmpty()) return;
-            Datos.eventos.add(0, new Datos.Evento(t, "Hoy " + Datos.hora() + " · N° " + Datos.miNumero, null));
-            h.cerrar();
-            hojaEventos();
-        });
-        h.mostrar();
     }
 
     private void hojaEmergencias() {
@@ -473,7 +565,13 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void hojaMas() {
         Hoja h = new Hoja(this, R.drawable.ic_cuadros, Hoja.Tono.AZUL, "Más funciones", "Herramientas para cuidar el pasaje entre todos.");
-        Hoja.flecha(h.fila(R.drawable.ic_vecinos, Hoja.Tono.AZUL, "Directorio de vecinos", "Todas las casas y su estado",
+        Hoja.flecha(h.fila(R.drawable.ic_perfil, Hoja.Tono.ORO, "Mi perfil", Sesion.identidad() + (Sesion.esAdmin() ? " · Administrador" : " · Vecino"),
+                v -> { h.cerrar(); hojaPerfil(); }));
+        Hoja.flecha(h.fila(R.drawable.ic_historial, Hoja.Tono.ROJO, "Historial de alertas", "Alertas recientes y su estado",
+                v -> { h.cerrar(); hojaHistorial(); }));
+        Hoja.flecha(h.fila(R.drawable.ic_casa, Hoja.Tono.AZUL, "Ir a casa", "Google Maps o Waze, y avisar al llegar",
+                v -> { h.cerrar(); hojaIrACasa(); }));
+        Hoja.flecha(h.fila(R.drawable.ic_vecinos, Hoja.Tono.AZUL, "Directorio de casas", "Todas las casas y su estado",
                 v -> { h.cerrar(); hojaDirectorio(); }));
         Hoja.flecha(h.fila(R.drawable.ic_llave, Hoja.Tono.AMBAR, "Reportar un problema", "Luminaria, basura, mascota perdida…",
                 v -> { h.cerrar(); hojaReporte(); }));
@@ -481,16 +579,13 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         boolean deVacaciones = mia != null && Datos.vacaciones.contains(mia.n);
         h.fila(R.drawable.ic_sol, Hoja.Tono.ORO, deVacaciones ? "Modo vacaciones: activo" : "Modo vacaciones",
                 deVacaciones ? "Toca para avisar que volviste" : "Pide a tus vecinos que vigilen tu casa", v -> {
-                    if (mia == null) return;
-                    if (deVacaciones) {
-                        Datos.vacaciones.remove(mia.n);
-                        Datos.enviar("Ya volví, gracias por cuidar mi casa", false);
-                    } else {
-                        Datos.vacaciones.add(mia.n);
-                        Datos.enviar("Estaré fuera unos días, ¿me ayudan a vigilar mi casa?", false);
+                    if (mia != null) {
+                        if (deVacaciones) Datos.vacaciones.remove(mia.n);
+                        else Datos.vacaciones.add(mia.n);
                     }
-                    avisoCorto("Aviso enviado al chat");
-                    dibujarCasas();
+                    alChat(deVacaciones ? "Ya volví, gracias por cuidar mi casa"
+                            : "Estaré fuera unos días, ¿me ayudan a vigilar mi casa?");
+                    if (mapa != null) dibujarCasas();
                     h.cerrar();
                 });
         Hoja.flecha(h.fila(R.drawable.ic_linterna, Hoja.Tono.VERDE, "Ronda vecinal", "Turnos para vigilar el pasaje",
@@ -498,13 +593,39 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         h.mostrar();
     }
 
+    /** Consultar y editar el nombre mostrado. La vivienda y el rol no se pueden cambiar desde aquí. */
+    private void hojaPerfil() {
+        Hoja h = new Hoja(this, R.drawable.ic_perfil, Hoja.Tono.ORO, "Mi perfil",
+                Sesion.correo + " · " + (Sesion.esAdmin() ? "Administrador" : "Vecino"));
+        h.fila(R.drawable.ic_casa, Hoja.Tono.AZUL, "Vivienda #" + Sesion.vivienda, "Para cambiarla, pídeselo al administrador", null);
+        EditText nombre = Ui.campo(this, h.contenido, "Nombre mostrado", "Tu nombre",
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS, 1);
+        nombre.setText(Sesion.nombre);
+        TextView err = Ui.error(this, h.contenido);
+        TextView guardar = Ui.boton(this, "Guardar nombre", R.color.blanco, null);
+        guardar.setBackgroundResource(R.drawable.bg_chat_card);
+        guardar.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(52)));
+        h.contenido.addView(guardar);
+        guardar.setOnClickListener(v -> {
+            guardar.setEnabled(false);
+            Sesion.cambiarNombre(nombre.getText().toString(), e -> {
+                guardar.setEnabled(true);
+                if (e != null) { err.setText(e); return; }
+                ((TextView) findViewById(R.id.saludo)).setText("Hola, " + Sesion.nombre);
+                avisoCorto("Nombre actualizado");
+                h.cerrar();
+            });
+        });
+        h.mostrar();
+    }
+
     private void hojaDirectorio() {
-        Hoja h = new Hoja(this, R.drawable.ic_vecinos, Hoja.Tono.AZUL, "Directorio de vecinos", "Toca una casa para verla en el mapa.");
+        Hoja h = new Hoja(this, R.drawable.ic_vecinos, Hoja.Tono.AZUL, "Directorio de casas", "Toca una casa para verla en el mapa.");
         for (Datos.Casa c : Datos.casas) {
             String est = estado(c);
             int color = Datos.alertas.contains(c.n) ? R.color.peligro
                     : Datos.vacaciones.contains(c.n) ? R.color.primario : R.color.ok;
-            View f = h.fila(c.esMia() ? R.drawable.ic_casa : R.drawable.ic_casa, c.esMia() ? Hoja.Tono.ORO : Hoja.Tono.AZUL,
+            View f = h.fila(R.drawable.ic_casa, c.esMia() ? Hoja.Tono.ORO : Hoja.Tono.AZUL,
                     c.etiqueta() + (c.esMia() ? " · tú" : ""), c.num == null ? "Número por confirmar" : null,
                     v -> { h.cerrar(); irA(c); });
             Hoja.derecha(f, est, color);
@@ -514,7 +635,7 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void hojaReporte() {
-        Hoja h = new Hoja(this, R.drawable.ic_llave, Hoja.Tono.AMBAR, "Reportar un problema", "Queda en Eventos y se avisa en el chat.");
+        Hoja h = new Hoja(this, R.drawable.ic_llave, Hoja.Tono.AMBAR, "Reportar un problema", "Se publica en el chat del pasaje.");
         h.textoCerrar("Cancelar");
         GridLayout g = h.cuadricula();
         Object[][] tipos = {
@@ -524,9 +645,7 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         for (Object[] t : tipos) {
             String tipo = (String) t[1];
             h.opcion(g, (int) t[0], Hoja.Tono.AMBAR, tipo, v -> {
-                Datos.eventos.add(0, new Datos.Evento(tipo, "Hoy " + Datos.hora() + " · reportado por N° " + Datos.miNumero, "reporte"));
-                Datos.enviar("Reporte: " + tipo, false);
-                avisoCorto("Reporte enviado");
+                alChat("Reporte: " + tipo);
                 h.cerrar();
             });
         }
@@ -539,8 +658,8 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
             boolean libre = t.quien == null;
             View f = h.fila(R.drawable.ic_linterna, libre ? Hoja.Tono.VERDE : Hoja.Tono.AZUL, t.dia + " · " + t.hora,
                     libre ? "Libre" : t.quien, libre ? v -> {
-                        t.quien = "N° " + Datos.miNumero;
-                        Datos.enviar("Me anoté en la ronda de " + t.dia.toLowerCase() + " " + t.hora, false);
+                        t.quien = Sesion.identidad();
+                        alChat("Me anoté en la ronda de " + t.dia.toLowerCase() + " " + t.hora);
                         h.cerrar();
                         hojaRonda();
                     } : null);

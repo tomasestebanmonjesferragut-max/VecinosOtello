@@ -33,12 +33,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MapaActivity" />
+        <activity
+            android:name=".RegistroActivity"
+            android:theme="@style/Theme.VecinosOtello.Login"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MapaActivity"
+            android:launchMode="singleTop" />
         <activity
             android:name=".ChatActivity"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".VentasActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AnunciosActivity"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize" />
 
-        <!-- Escucha las alertas del chat con la app cerrada -->
+        <!-- Mantiene la conexión MQTT de las alertas con la app en segundo plano -->
         <service
             android:name=".VigilanciaService"
             android:exported="false"
@@ -47,6 +60,18 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Avisos de emergencia vecinal en tiempo real" />
         </service>
+
+        <!-- Recibe por FCM las notificaciones de anuncios oficiales -->
+        <service
+            android:name=".MensajeriaService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="anuncios" />
     </application>
 
     <!-- Para abrir Google Maps y Waze desde "Ir a casa" (Android 11+) -->
