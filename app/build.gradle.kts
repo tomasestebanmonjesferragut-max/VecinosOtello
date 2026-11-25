@@ -18,6 +18,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Solo para el manifiesto de las pruebas con Robolectric; la app usa la clave real del plugin de secretos
+        manifestPlaceholders["MAPS_API_KEY"] = "DEFAULT_API_KEY"
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true // Robolectric
     }
 
     buildTypes {
@@ -43,11 +49,19 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.material)
     implementation(libs.play.services.maps)
-    // Chat del vecindario en Firebase (proyecto vecinos-otello-2026)
+    // Firebase (proyecto vecinosotello): cuentas, datos en tiempo real y notificaciones de anuncios
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-messaging")
+    // MQTT para las alertas: cliente Eclipse Paho (el mismo que usa por dentro la librería de la guía),
+    // ejecutado en nuestro servicio en primer plano. La versión Android 3.3.5 de la guía registra un
+    // receptor sin el flag que exige Android 14+ con targetSdk 34 o más, y cerraría la app.
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
+
     testImplementation(libs.junit)
+    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation("org.mockito:mockito-core:5.18.0")
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
 }
