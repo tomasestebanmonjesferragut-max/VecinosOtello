@@ -2,102 +2,116 @@ package com.example.vecinosotello;
 
 import androidx.annotation.NonNull;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Locale;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Chat del vecindario en Firebase Realtime Database (nodo "mensajes").
- * Los mensajes llegan al instante y quedan guardados en la nube y en el teléfono (sin conexión).
+ * Chat general en Realtime Database (nodo "mensajes").
+ * Cada mensaje guarda quién lo envió (uid, nombre y vivienda), el texto y la fecha del servidor.
+ * El historial se pide por páginas (los últimos N) para no descargar todo cada vez.
  */
-final class Chat {
+public final class Chat {
 
-    interface Cambio { void alCambiar(); }
+    public static final int PAGINA = 30;
 
-    /** Para dejar de escuchar al salir de una pantalla. */
-    interface Escucha { void quitar(); }
+    public static final class Mensaje {
+        public final String id, uid, nombre, vivienda, texto;
+        public final Long fecha; // null mientras el servidor no confirma
+        public final boolean mio;
 
-    private static final int MAXIMO = 200; // últimos mensajes que se muestran
-    private static final String URL = "https://vecinosotello-default-rtdb.firebaseio.com"; // us-central1
-    private static DatabaseReference ref;
+        Mensaje(String id, String uid, String nombre, String vivienda, String texto, Long fecha, boolean mio) {
+            this.id = id;
+            this.uid = uid;
+            this.nombre = nombre;
+            this.vivienda = vivienda;
+            this.texto = texto;
+            this.fecha = fecha;
+            this.mio = mio;
+        }
+
+        public String autor() { return Validaciones.identidad(nombre, vivienda); }
+
+        /** true mientras el servidor no confirma que recibió el mensaje (sin conexión, por ejemplo). */
+        public boolean pendiente() { return pendientes.contains(id); }
+    }
+
+    public interface Cambio { void alCambiar(List<Mensaje> mensajes, boolean hayMas); }
+
+    public interface Error { void alFallar(String mensaje); }
+
+    /** Para dejar de escuchar al salir de una pantalla (evita listeners duplicados). */
+    public interface Escucha { void quitar(); }
+
+    /** Mensajes enviados desde este teléfono que el servidor aún no confirma. */
+    private static final Set<String> pendientes = new HashSet<>();
 
     private Chat() { }
 
-    static DatabaseReference mensajes() {
-        if (ref == null) {
-            FirebaseDatabase db = FirebaseDatabase.getInstance(URL);
-            db.setPersistenceEnabled(true); // guarda una copia en el teléfono y envía al volver la conexión
-            ref = db.getReference("mensajes");
-            ref.keepSynced(true);
-        }
-        return ref;
-    }
-
-    static String miUid() {
-        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
-        return u != null ? u.getUid() : null;
-    }
-
-    /** Publica un mensaje para todo el vecindario. */
-    static void enviar(String texto, boolean alerta) {
-        String uid = miUid();
-        if (uid == null) return;
-        Map<String, Object> m = new HashMap<>();
-        m.put("quien", "N° " + Datos.miNumero);
-        m.put("texto", texto);
-        m.put("alerta", alerta);
-        m.put("uid", uid);
-        m.put("fecha", ServerValue.TIMESTAMP);
-        mensajes().push().setValue(m);
+    static DatabaseReference ref() {
+        DatabaseReference r = Firebase.db().getReference("mensajes");
+        r.keepSynced(true);
+        return r;
     }
 
     /**
-     * Escucha los mensajes en tiempo real, los copia a Datos.mensajes y marca en el mapa
-     * las casas que mandaron alertas.
+     * Publica un mensaje con la identidad del usuario. Devuelve el error de validación o null.
+     * alTerminar se llama cuando el servidor confirma (o rechaza) para quitar el "Enviando…".
      */
-    static Escucha escuchar(Cambio cambio) {
-        Query q = mensajes().orderByChild("fecha").limitToLast(MAXIMO);
+    public static String enviar(String texto, Runnable alTerminar, Error alFallar) {
+        String e = Validaciones.validarMensaje(texto);
+        if (e != null) return e;
+        DatabaseReference nuevo = ref().push();
+        Map<String, Object> m = new HashMap<>();
+        m.put("uid", Sesion.uid);
+        m.put("nombre", Sesion.nombre);
+        m.put("vivienda", Sesion.vivienda);
+        m.put("texto", texto.trim());
+        m.put("fecha", ServerValue.TIMESTAMP);
+        pendientes.add(nuevo.getKey());
+        nuevo.setValue(m).addOnCompleteListener(t -> {
+            pendientes.remove(nuevo.getKey());
+            if (!t.isSuccessful() && alFallar != null) alFallar.alFallar("No se pudo enviar el mensaje.");
+            if (alTerminar != null) alTerminar.run();
+        });
+        return null;
+    }
+
+    /** Escucha los últimos {@code limite} mensajes en tiempo real. */
+    public static Escucha escuchar(int limite, Cambio cambio, Error error) {
+        Query q = ref().orderByChild("fecha").limitToLast(limite);
         ValueEventListener l = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
-                String uid = miUid();
-                Datos.mensajes.clear();
+                List<Mensaje> lista = new ArrayList<>();
                 for (DataSnapshot d : snap.getChildren()) {
-                    String quien = d.child("quien").getValue(String.class);
+                    String uid = d.child("uid").getValue(String.class);
+                    String nombre = d.child("nombre").getValue(String.class);
+                    String vivienda = d.child("vivienda").getValue(String.class);
                     String texto = d.child("texto").getValue(String.class);
-                    if (quien == null || texto == null) continue;
-                    boolean alerta = Boolean.TRUE.equals(d.child("alerta").getValue(Boolean.class));
-                    Long fecha = d.child("fecha").getValue(Long.class);
-                    Datos.mensajes.add(new Datos.Mensaje(quien, texto, hora(fecha),
-                            uid != null && uid.equals(d.child("uid").getValue(String.class)), alerta));
-                    if (alerta) Datos.marcarAlerta(quien);
+                    if (nombre == null || vivienda == null || texto == null) continue;
+                    lista.add(new Mensaje(d.getKey(), uid, nombre, vivienda, texto, d.child("fecha").getValue(Long.class),
+                            uid != null && uid.equals(Sesion.uid)));
                 }
-                cambio.alCambiar();
+                cambio.alCambiar(lista, snap.getChildrenCount() >= limite);
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                // Se corta si se cierra la sesión o las reglas lo rechazan; la pantalla queda con lo último recibido.
+            public void onCancelled(@NonNull DatabaseError e) {
+                if (error != null) error.alFallar("No se pudo leer el chat: " + e.getMessage());
             }
         };
         q.addValueEventListener(l);
         return () -> q.removeEventListener(l);
-    }
-
-    private static String hora(Long fecha) {
-        if (fecha == null) return Datos.hora();
-        return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(fecha));
     }
 }

@@ -45,6 +45,8 @@
                 style="@style/Subtitulo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="polite"
+                android:drawablePadding="5dp"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
@@ -66,20 +68,17 @@
             android:paddingVertical="16dp" />
     </ScrollView>
 
-    <HorizontalScrollView
+    <TextView
+        android:id="@+id/errorChat"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/blanco"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:id="@+id/rapidos"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="10dp" />
-    </HorizontalScrollView>
+        android:accessibilityLiveRegion="polite"
+        android:background="@color/peligro_suave"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="8dp"
+        android:textColor="@color/peligro"
+        android:textSize="13sp"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"
