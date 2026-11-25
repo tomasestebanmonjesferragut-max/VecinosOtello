@@ -1,16 +1,88 @@
 {
   "rules": {
+    "usuarios": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['nombre', 'vivienda', 'rol'])",
+        "nombre": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40" },
+        "vivienda": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{1,5}[A-Z]{0,2}$/) && (!data.exists() || newData.val() === data.val())" },
+        "rol": { ".validate": "(!data.exists() && newData.val() === 'vecino') || (data.exists() && newData.val() === data.val())" },
+        "$otro": { ".validate": false }
+      }
+    },
+
     "mensajes": {
       ".read": "auth != null",
       ".indexOn": ["fecha"],
       "$id": {
-        ".write": "auth != null && !data.exists()",
-        ".validate": "newData.hasChildren(['quien', 'texto', 'alerta', 'uid', 'fecha'])",
-        "quien": { ".validate": "newData.isString() && newData.val().length <= 40" },
-        "texto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
-        "alerta": { ".validate": "newData.isBoolean()" },
+        ".write": "auth != null && !data.exists() && root.child('usuarios/' + auth.uid).exists()",
+        ".validate": "newData.hasChildren(['uid', 'nombre', 'vivienda', 'texto', 'fecha'])",
         "uid": { ".validate": "newData.val() === auth.uid" },
+        "nombre": { ".validate": "newData.val() === root.child('usuarios/' + auth.uid + '/nombre').val()" },
+        "vivienda": { ".validate": "newData.val() === root.child('usuarios/' + auth.uid + '/vivienda').val()" },
+        "texto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
         "fecha": { ".validate": "newData.val() === now" },
+        "$otro": { ".validate": false }
+      }
+    },
+
+    "anuncios": {
+      ".read": "auth != null",
+      ".indexOn": ["fecha"],
+      "$id": {
+        ".write": "auth != null && root.child('usuarios/' + auth.uid + '/rol').val() === 'admin'",
+        ".validate": "newData.hasChildren(['titulo', 'contenido', 'autor', 'uid', 'importante', 'fecha'])",
+        "titulo": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+        "contenido": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 1000" },
+        "autor": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "uid": { ".validate": "newData.val() === auth.uid" },
+        "importante": { ".validate": "newData.isBoolean()" },
+        "fecha": { ".validate": "newData.isNumber()" },
+        "$otro": { ".validate": false }
+      }
+    },
+
+    "ventas": {
+      ".read": "auth != null",
+      ".indexOn": ["fecha"],
+      "$id": {
+        ".write": "auth != null && (data.exists() ? data.child('uid').val() === auth.uid : root.child('usuarios/' + auth.uid).exists())",
+        ".validate": "newData.hasChildren(['uid', 'nombre', 'vivienda', 'titulo', 'descripcion', 'categoria', 'precio', 'vendido', 'fecha'])",
+        "uid": { ".validate": "newData.val() === auth.uid" },
+        "nombre": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "vivienda": { ".validate": "newData.isString() && newData.val().length <= 7" },
+        "titulo": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60" },
+        "descripcion": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "categoria": { ".validate": "newData.isString() && newData.val().matches(/^(Comida|Ropa|Hogar|Tecnología|Servicios|Otros)$/)" },
+        "precio": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && newData.val() % 1 === 0" },
+        "vendido": { ".validate": "newData.isBoolean()" },
+        "fecha": { ".validate": "newData.isNumber()" },
+        "$otro": { ".validate": false }
+      }
+    },
+
+    "alertas": {
+      ".read": "auth != null",
+      ".indexOn": ["fecha"],
+      "$id": {
+        ".write": "auth != null && (!data.exists() ? (newData.child('uid').val() === auth.uid && newData.child('estado').val() === 'activa') : root.child('usuarios/' + auth.uid + '/rol').val() === 'admin')",
+        ".validate": "newData.hasChildren(['id', 'comunidad', 'uid', 'nombre', 'vivienda', 'tipo', 'fecha', 'estado'])",
+        "id": { ".validate": "newData.val() === $id" },
+        "comunidad": { ".validate": "newData.val() === 'otello'" },
+        "uid": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
+        "nombre": { ".validate": "newData.isString() && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())" },
+        "vivienda": { ".validate": "newData.isString() && newData.val().length <= 7 && (!data.exists() || newData.val() === data.val())" },
+        "tipo": { ".validate": "newData.isString() && newData.val().length <= 40 && (!data.exists() || newData.val() === data.val())" },
+        "fecha": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())" },
+        "estado": { ".validate": "newData.isString() && newData.val().matches(/^(activa|atendida|cerrada)$/)" },
+        "atendidaPor": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "vistos": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.isNumber()"
+          }
+        },
         "$otro": { ".validate": false }
       }
     }
