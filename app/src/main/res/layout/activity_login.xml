@@ -17,7 +17,7 @@
             android:layout_width="76dp"
             android:layout_height="76dp"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:background="@drawable/bg_escudo"
             android:elevation="8dp">
 
@@ -45,14 +45,14 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="6dp"
-            android:text="Prevención de riesgo · San Joaquín"
+            android:text="Comunidad conectada · Pje. Otello"
             android:textColor="#CBD5E1"
             android:textSize="14sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="36dp"
+            android:layout_marginTop="32dp"
             android:background="@drawable/bg_tarjeta"
             android:elevation="6dp"
             android:orientation="vertical"
@@ -62,6 +62,7 @@
                 style="@style/Titulo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
                 android:text="Iniciar sesión"
                 android:textSize="20sp" />
 
@@ -70,69 +71,54 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Entra con el correo de tu casa."
+                android:text="Entra con tu correo y contraseña."
                 android:textSize="14sp" />
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                style="@style/Etiqueta"
                 android:labelFor="@id/correo"
-                android:text="Correo"
-                android:textColor="@color/texto"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:text="Correo" />
 
             <EditText
                 android:id="@+id/correo"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="6dp"
+                style="@style/Campo"
                 android:autofillHints="emailAddress"
-                android:background="@drawable/bg_campo"
                 android:drawableStart="@drawable/ic_correo"
-                android:drawablePadding="10dp"
-                android:drawableTint="@color/texto_3"
                 android:hint="correo@gmail.com"
-                android:inputType="textEmailAddress"
-                android:paddingHorizontal="14dp"
-                android:textColor="@color/texto"
-                android:textColorHint="@color/texto_3"
-                android:textSize="16sp" />
+                android:inputType="textEmailAddress" />
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                style="@style/Etiqueta"
                 android:labelFor="@id/clave"
-                android:text="Contraseña (letras y números, mínimo 8)"
-                android:textColor="@color/texto"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:text="Contraseña" />
 
             <EditText
                 android:id="@+id/clave"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="6dp"
+                style="@style/Campo"
                 android:autofillHints="password"
-                android:background="@drawable/bg_campo"
                 android:drawableStart="@drawable/ic_cerrado"
-                android:drawablePadding="10dp"
-                android:drawableTint="@color/texto_3"
                 android:hint="••••••••"
                 android:inputType="textPassword"
-                android:maxLength="32"
-                android:paddingHorizontal="14dp"
-                android:textColor="@color/texto"
-                android:textColorHint="@color/texto_3"
-                android:textSize="16sp" />
+                android:maxLength="64" />
+
+            <TextView
+                android:id="@+id/olvide"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_gravity="end"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="4dp"
+                android:text="¿Olvidaste tu contraseña?"
+                android:textColor="@color/primario"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/entrar"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="4dp"
                 android:text="Entrar"
                 android:textSize="16sp"
                 android:textStyle="bold"
@@ -147,6 +133,16 @@
                 android:minHeight="18dp"
                 android:textColor="@color/peligro"
                 android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/registrarme"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="4dp"
+                android:text="Crear una cuenta"
+                android:textStyle="bold"
+                app:cornerRadius="14dp" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

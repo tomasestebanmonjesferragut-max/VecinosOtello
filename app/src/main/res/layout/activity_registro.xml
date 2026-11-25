@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="22dp"
+        android:paddingVertical="24dp">
+
+        <ImageButton
+            android:id="@+id/volver"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_burbuja_card"
+            android:contentDescription="Volver al inicio de sesión"
+            android:src="@drawable/ic_atras"
+            app:tint="@color/blanco" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:accessibilityHeading="true"
+            android:text="Crear cuenta"
+            android:textColor="@color/blanco"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Así te reconocerán tus vecinos en el chat y en las alertas."
+            android:textColor="#CBD5E1"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_tarjeta"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:padding="22dp">
+
+            <TextView style="@style/Etiqueta" android:labelFor="@id/nombre" android:text="Nombre" />
+
+            <EditText
+                android:id="@+id/nombre"
+                style="@style/Campo"
+                android:autofillHints="name"
+                android:drawableStart="@drawable/ic_vecinos"
+                android:hint="Ej. Profe Benja"
+                android:inputType="textPersonName|textCapWords"
+                android:maxLength="40" />
+
+            <TextView style="@style/Etiqueta" android:labelFor="@id/vivienda" android:text="Número de vivienda" />
+
+            <EditText
+                android:id="@+id/vivienda"
+                style="@style/Campo"
+                android:drawableStart="@drawable/ic_casa"
+                android:hint="Ej. 3538 o 311A"
+                android:importantForAutofill="no"
+                android:inputType="textCapCharacters|textNoSuggestions"
+                android:maxLength="7" />
+
+            <TextView style="@style/Etiqueta" android:labelFor="@id/correo" android:text="Correo" />
+
+            <EditText
+                android:id="@+id/correo"
+                style="@style/Campo"
+                android:autofillHints="emailAddress"
+                android:drawableStart="@drawable/ic_correo"
+                android:hint="correo@gmail.com"
+                android:inputType="textEmailAddress" />
+
+            <TextView style="@style/Etiqueta" android:labelFor="@id/clave" android:text="Contraseña (letras y números, mínimo 8)" />
+
+            <EditText
+                android:id="@+id/clave"
+                style="@style/Campo"
+                android:autofillHints="newPassword"
+                android:drawableStart="@drawable/ic_cerrado"
+                android:hint="••••••••"
+                android:inputType="textPassword"
+                android:maxLength="64" />
+
+            <TextView style="@style/Etiqueta" android:labelFor="@id/repetir" android:text="Repite la contraseña" />
+
+            <EditText
+                android:id="@+id/repetir"
+                style="@style/Campo"
+                android:autofillHints="newPassword"
+                android:drawableStart="@drawable/ic_cerrado"
+                android:hint="••••••••"
+                android:inputType="textPassword"
+                android:maxLength="64" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/crear"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="20dp"
+                android:text="Crear cuenta"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:cornerRadius="14dp" />
+
+            <TextView
+                android:id="@+id/error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:accessibilityLiveRegion="polite"
+                android:minHeight="18dp"
+                android:textColor="@color/peligro"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

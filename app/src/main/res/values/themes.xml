@@ -48,6 +48,28 @@
         <item name="android:textSize">13sp</item>
     </style>
 
+    <!-- Formularios -->
+    <style name="Etiqueta">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">14dp</item>
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="Campo">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:background">@drawable/bg_campo</item>
+        <item name="android:drawablePadding">10dp</item>
+        <item name="android:drawableTint">@color/texto_3</item>
+        <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:textColor">@color/texto</item>
+        <item name="android:textColorHint">@color/texto_3</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
     <!-- Botones de la barra inferior -->
     <style name="BotonBarra">
         <item name="android:layout_width">0dp</item>
