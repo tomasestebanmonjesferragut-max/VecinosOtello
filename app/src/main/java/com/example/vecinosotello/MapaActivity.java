@@ -398,7 +398,8 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
         Object[][] tipos = {
                 {R.drawable.ic_salvavidas, "Necesito ayuda"}, {R.drawable.ic_sospechoso, "Persona sospechosa"},
                 {R.drawable.ic_auto, "Auto sospechoso"}, {R.drawable.ic_candado, "Robo o intento de robo"},
-                {R.drawable.ic_fuego, "Incendio o humo"}, {R.drawable.ic_pulso, "Emergencia médica"}};
+                {R.drawable.ic_fuego, "Incendio o humo"}, {R.drawable.ic_pulso, "Emergencia médica"},
+                {R.drawable.ic_peligro, "Ñuñoíno detectado"}, {R.drawable.ic_sospechoso, "Extranjero cerca"}};
         for (Object[] t : tipos) {
             String tipo = (String) t[1];
             h.opcion(g, (int) t[0], Hoja.Tono.ROJO, tipo, v -> { h.cerrar(); confirmarAlerta(tipo); });

@@ -61,5 +61,7 @@ public class AlertaTest {
         assertTrue(Alerta.nueva("Emergencia médica", "u", "n", "1", 0).esUrgente());
         assertFalse(Alerta.nueva("Persona sospechosa", "u", "n", "1", 0).esUrgente());
         assertFalse(Alerta.nueva("Auto sospechoso", "u", "n", "1", 0).esUrgente());
+        assertFalse(Alerta.nueva("Ñuñoíno detectado", "u", "n", "1", 0).esUrgente());
+        assertFalse(Alerta.nueva("Extranjero cerca", "u", "n", "1", 0).esUrgente());
     }
 }
