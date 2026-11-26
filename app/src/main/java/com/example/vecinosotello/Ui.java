@@ -96,6 +96,19 @@ final class Ui {
         return cb;
     }
 
+    /** Botón de ojo para mostrar u ocultar lo que se escribe en un campo de contraseña. */
+    static void ojoClave(EditText campo, android.widget.ImageButton ojo) {
+        ojo.setOnClickListener(v -> {
+            boolean oculta = campo.getTransformationMethod() instanceof android.text.method.PasswordTransformationMethod;
+            campo.setTransformationMethod(oculta
+                    ? android.text.method.HideReturnsTransformationMethod.getInstance()
+                    : android.text.method.PasswordTransformationMethod.getInstance());
+            ojo.setImageResource(oculta ? R.drawable.ic_ojo_cerrado : R.drawable.ic_ojo);
+            ojo.setContentDescription(oculta ? "Ocultar contraseña" : "Mostrar contraseña");
+            campo.setSelection(campo.getText().length()); // el cursor queda al final
+        });
+    }
+
     /** Texto de error bajo un formulario. */
     static TextView error(Context c, LinearLayout dentro) {
         TextView t = new TextView(c);

@@ -92,14 +92,34 @@
                 android:labelFor="@id/clave"
                 android:text="Contraseña" />
 
-            <EditText
-                android:id="@+id/clave"
-                style="@style/Campo"
-                android:autofillHints="password"
-                android:drawableStart="@drawable/ic_cerrado"
-                android:hint="••••••••"
-                android:inputType="textPassword"
-                android:maxLength="64" />
+            <!-- Campo de contraseña con ojo para mostrarla u ocultarla -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/clave"
+                    style="@style/Campo"
+                    android:layout_marginTop="0dp"
+                    android:paddingEnd="52dp"
+                    android:autofillHints="password"
+                    android:drawableStart="@drawable/ic_cerrado"
+                    android:hint="••••••••"
+                    android:inputType="textPassword"
+                    android:maxLength="64" />
+
+                <ImageButton
+                    android:id="@+id/ver_clave"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Mostrar contraseña"
+                    android:src="@drawable/ic_ojo"
+                    app:tint="@color/texto_3" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/olvide"

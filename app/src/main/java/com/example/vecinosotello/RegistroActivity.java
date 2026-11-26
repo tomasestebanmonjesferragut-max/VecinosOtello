@@ -32,10 +32,11 @@ public class RegistroActivity extends AppCompatActivity {
         crear = findViewById(R.id.crear);
         error = findViewById(R.id.error);
         boolean soloPerfil = getIntent().getBooleanExtra(EXTRA_SOLO_PERFIL, false);
+        Ui.ojoClave(clave, findViewById(R.id.ver_clave));
+        Ui.ojoClave(repetir, findViewById(R.id.ver_repetir));
 
         if (soloPerfil) { // ocultar lo que ya existe
-            ocultarEtiquetas();
-            for (int id : new int[]{R.id.correo, R.id.clave, R.id.repetir}) findViewById(id).setVisibility(View.GONE);
+            ocultarCampos();
             crear.setText("Guardar perfil");
         }
 
@@ -82,13 +83,16 @@ public class RegistroActivity extends AppCompatActivity {
         });
     }
 
-    private void ocultarEtiquetas() {
-        // Las etiquetas de correo y contraseñas están justo antes de cada campo
+    /** Oculta correo y contraseñas con sus etiquetas (cada etiqueta está justo antes de su campo). */
+    private void ocultarCampos() {
         for (int id : new int[]{R.id.correo, R.id.clave, R.id.repetir}) {
             View campo = findViewById(id);
-            android.view.ViewGroup padre = (android.view.ViewGroup) campo.getParent();
-            int i = padre.indexOfChild(campo);
+            // Las contraseñas van dentro de un FrameLayout junto a su ojo: se oculta el conjunto
+            View bloque = campo.getParent() instanceof android.widget.FrameLayout ? (View) campo.getParent() : campo;
+            android.view.ViewGroup padre = (android.view.ViewGroup) bloque.getParent();
+            int i = padre.indexOfChild(bloque);
             if (i > 0) padre.getChildAt(i - 1).setVisibility(View.GONE);
+            bloque.setVisibility(View.GONE);
         }
     }
 

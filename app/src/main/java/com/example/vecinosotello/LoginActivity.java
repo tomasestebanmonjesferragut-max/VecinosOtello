@@ -31,6 +31,7 @@ public class LoginActivity extends AppCompatActivity {
         clave = findViewById(R.id.clave);
         error = findViewById(R.id.error);
         entrar = findViewById(R.id.entrar);
+        Ui.ojoClave(clave, findViewById(R.id.ver_clave));
 
         entrar.setOnClickListener(v -> {
             String c = correo.getText().toString().trim();

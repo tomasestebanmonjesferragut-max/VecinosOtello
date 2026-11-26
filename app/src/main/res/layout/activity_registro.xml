@@ -83,25 +83,65 @@
 
             <TextView style="@style/Etiqueta" android:labelFor="@id/clave" android:text="Contraseña (letras y números, mínimo 8)" />
 
-            <EditText
-                android:id="@+id/clave"
-                style="@style/Campo"
-                android:autofillHints="newPassword"
-                android:drawableStart="@drawable/ic_cerrado"
-                android:hint="••••••••"
-                android:inputType="textPassword"
-                android:maxLength="64" />
+            <!-- Campo de contraseña con ojo para mostrarla u ocultarla -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/clave"
+                    style="@style/Campo"
+                    android:layout_marginTop="0dp"
+                    android:paddingEnd="52dp"
+                    android:autofillHints="newPassword"
+                    android:drawableStart="@drawable/ic_cerrado"
+                    android:hint="••••••••"
+                    android:inputType="textPassword"
+                    android:maxLength="64" />
+
+                <ImageButton
+                    android:id="@+id/ver_clave"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Mostrar contraseña"
+                    android:src="@drawable/ic_ojo"
+                    app:tint="@color/texto_3" />
+            </FrameLayout>
 
             <TextView style="@style/Etiqueta" android:labelFor="@id/repetir" android:text="Repite la contraseña" />
 
-            <EditText
-                android:id="@+id/repetir"
-                style="@style/Campo"
-                android:autofillHints="newPassword"
-                android:drawableStart="@drawable/ic_cerrado"
-                android:hint="••••••••"
-                android:inputType="textPassword"
-                android:maxLength="64" />
+            <!-- Campo de contraseña con ojo para mostrarla u ocultarla -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp">
+
+                <EditText
+                    android:id="@+id/repetir"
+                    style="@style/Campo"
+                    android:layout_marginTop="0dp"
+                    android:paddingEnd="52dp"
+                    android:autofillHints="newPassword"
+                    android:drawableStart="@drawable/ic_cerrado"
+                    android:hint="••••••••"
+                    android:inputType="textPassword"
+                    android:maxLength="64" />
+
+                <ImageButton
+                    android:id="@+id/ver_repetir"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Mostrar contraseña"
+                    android:src="@drawable/ic_ojo"
+                    app:tint="@color/texto_3" />
+            </FrameLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/crear"

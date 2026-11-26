@@ -7,6 +7,7 @@ import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
@@ -47,6 +48,15 @@ public class InicioSesionUiTest {
         onView(withId(R.id.correo)).perform(replaceText("vecino-sin-arroba"), closeSoftKeyboard());
         onView(withId(R.id.entrar)).perform(scrollTo(), click());
         onView(withId(R.id.error)).check(matches(withText("El correo no es válido.")));
+    }
+
+    @Test
+    public void elOjoMuestraYOcultaLaContrasena() {
+        onView(withId(R.id.clave)).perform(replaceText("Casa3538"), closeSoftKeyboard());
+        onView(withId(R.id.ver_clave)).perform(click());
+        onView(withId(R.id.ver_clave)).check(matches(withContentDescription("Ocultar contraseña")));
+        onView(withId(R.id.ver_clave)).perform(click());
+        onView(withId(R.id.ver_clave)).check(matches(withContentDescription("Mostrar contraseña")));
     }
 
     @Test
