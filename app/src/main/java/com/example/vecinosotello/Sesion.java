@@ -69,6 +69,8 @@ public final class Sesion {
                 nombre = n;
                 vivienda = v;
                 rol = d.child("rol").getValue(String.class);
+                // Correo en /correos/{uid}: solo el administrador puede leerlo (ver reglas)
+                if (correo != null) Firebase.db().getReference("correos").child(uid).setValue(correo);
                 Firebase.suscribirAnuncios();
                 r.listo(null);
             }

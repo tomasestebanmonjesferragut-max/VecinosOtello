@@ -12,6 +12,24 @@
       }
     },
 
+    "calificaciones": {
+      ".read": "auth != null",
+      "$venta": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('usuarios/' + auth.uid).exists() && root.child('ventas/' + $venta).exists() && root.child('ventas/' + $venta + '/uid').val() !== auth.uid",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5"
+        }
+      }
+    },
+
+    "correos": {
+      ".read": "auth != null && root.child('usuarios/' + auth.uid + '/rol').val() === 'admin'",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.isString() && newData.val() === auth.token.email"
+      }
+    },
+
     "mensajes": {
       ".read": "auth != null",
       ".indexOn": ["fecha"],
@@ -56,6 +74,7 @@
         "descripcion": { ".validate": "newData.isString() && newData.val().length <= 300" },
         "categoria": { ".validate": "newData.isString() && newData.val().matches(/^(Comida|Ropa|Hogar|Tecnología|Servicios|Otros)$/)" },
         "precio": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && newData.val() % 1 === 0" },
+        "tipo": { ".validate": "newData.isString() && newData.val().matches(/^(Producto|Servicio)$/)" },
         "vendido": { ".validate": "newData.isBoolean()" },
         "fecha": { ".validate": "newData.isNumber()" },
         "$otro": { ".validate": false }

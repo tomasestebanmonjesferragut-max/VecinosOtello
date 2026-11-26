@@ -574,6 +574,10 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
                 v -> { h.cerrar(); hojaIrACasa(); }));
         Hoja.flecha(h.fila(R.drawable.ic_vecinos, Hoja.Tono.AZUL, "Directorio de casas", "Todas las casas y su estado",
                 v -> { h.cerrar(); hojaDirectorio(); }));
+        if (Sesion.esAdmin()) {
+            Hoja.flecha(h.fila(R.drawable.ic_correo, Hoja.Tono.ROJO, "Vecinos registrados", "Solo administrador: correos y cambio de contraseña",
+                    v -> { h.cerrar(); hojaVecinos(); }));
+        }
         Hoja.flecha(h.fila(R.drawable.ic_llave, Hoja.Tono.AMBAR, "Reportar un problema", "Luminaria, basura, mascota perdida…",
                 v -> { h.cerrar(); hojaReporte(); }));
         Datos.Casa mia = Datos.miCasa();
@@ -633,6 +637,45 @@ public class MapaActivity extends AppCompatActivity implements OnMapReadyCallbac
             ((TextView) f.findViewById(R.id.filaDerecha)).setTextSize(12);
         }
         h.mostrar();
+    }
+
+    /**
+     * Solo administrador: lista de vecinos con su correo. Las contraseñas no se pueden ver
+     * (Firebase solo guarda un hash); en su lugar se envía un correo para que el vecino cree una nueva.
+     */
+    private void hojaVecinos() {
+        com.google.firebase.database.DatabaseReference raiz = Firebase.db().getReference();
+        raiz.child("correos").get().addOnCompleteListener(tc -> raiz.child("usuarios").get().addOnCompleteListener(tu -> {
+            if (!tc.isSuccessful() || !tu.isSuccessful()) {
+                avisoCorto("No se pudo cargar la lista. Revisa tu conexión.");
+                return;
+            }
+            Hoja h = new Hoja(this, R.drawable.ic_correo, Hoja.Tono.ROJO, "Vecinos registrados",
+                    "Toca un vecino para enviarle un correo y que cree una contraseña nueva.");
+            for (com.google.firebase.database.DataSnapshot u : tu.getResult().getChildren()) {
+                String nombre = u.child("nombre").getValue(String.class);
+                String viv = u.child("vivienda").getValue(String.class);
+                String correo = tc.getResult().child(u.getKey()).getValue(String.class);
+                boolean admin = Sesion.ADMIN.equals(u.child("rol").getValue(String.class));
+                h.fila(R.drawable.ic_perfil, admin ? Hoja.Tono.ORO : Hoja.Tono.AZUL,
+                        Validaciones.identidad(nombre, viv) + (admin ? " · admin" : ""),
+                        correo != null ? correo : "Correo pendiente: se guarda cuando abra la app",
+                        correo == null ? null : v -> confirmarCambioClave(nombre, correo));
+            }
+            h.mostrar();
+        }));
+    }
+
+    private void confirmarCambioClave(String nombre, String correo) {
+        new AlertDialog.Builder(this)
+                .setTitle("¿Enviar cambio de contraseña?")
+                .setMessage("Le llegará a " + nombre + " un enlace a " + correo + " para crear una contraseña nueva.")
+                .setPositiveButton("Enviar", (d, w) -> com.google.firebase.auth.FirebaseAuth.getInstance()
+                        .sendPasswordResetEmail(correo)
+                        .addOnSuccessListener(r -> avisoCorto("Correo enviado a " + correo))
+                        .addOnFailureListener(e -> avisoCorto("No se pudo enviar. Revisa tu conexión.")))
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     private void hojaReporte() {

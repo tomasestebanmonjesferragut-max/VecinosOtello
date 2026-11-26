@@ -97,6 +97,21 @@ public final class Validaciones {
         return null;
     }
 
+    /** Lo que se ofrece en la tienda. */
+    public static final String[] TIPOS = {"Producto", "Servicio"};
+
+    public static boolean esTipo(String tipo) {
+        for (String t : TIPOS) if (t.equals(tipo)) return true;
+        return false;
+    }
+
+    public static String validarTipo(String tipo) {
+        return esTipo(tipo) ? null : "Elige si es producto o servicio.";
+    }
+
+    /** Calificación de un producto o servicio: de 1 a 5 estrellas. */
+    public static boolean estrellasValidas(int estrellas) { return estrellas >= 1 && estrellas <= 5; }
+
     public static boolean esCategoria(String categoria) {
         for (String c : CATEGORIAS) if (c.equals(categoria)) return true;
         return false;

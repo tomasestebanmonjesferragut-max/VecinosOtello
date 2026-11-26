@@ -111,6 +111,34 @@ def main():
     venta["precio"] = 12.5
     caso("R17", "Producto con precio con decimales", False, pedir("PUT", ruta("ventas/prueba-venta2", t_vecino), venta)[0])
 
+    correo_vecino = cuentas["3530"][0].lower()
+    caso("R18", "Vecino guarda su propio correo", True,
+         pedir("PUT", ruta(f"correos/{uid_vecino}", t_vecino), correo_vecino)[0])
+    caso("R19", "Vecino guarda un correo que no es el suyo", False,
+         pedir("PUT", ruta(f"correos/{uid_vecino}", t_vecino), "otro@ejemplo.com")[0])
+    caso("R20", "Vecino intenta escribir el correo de otro usuario", False,
+         pedir("PUT", ruta(f"correos/{uid_admin}", t_vecino), correo_vecino)[0])
+    caso("R21", "Vecino intenta leer los correos de todos", False, pedir("GET", ruta("correos", t_vecino))[0])
+    caso("R22", "Administrador lee los correos de todos", True, pedir("GET", ruta("correos", t_admin))[0])
+
+    servicio = dict(venta, precio=5000, titulo="Corte de pelo", categoria="Servicios", tipo="Servicio")
+    caso("R23", "Vecino ofrece un servicio en la tienda", True,
+         pedir("PUT", ruta("ventas/prueba-servicio", t_vecino), servicio)[0])
+    caso("R24", "Publicación con un tipo que no es producto ni servicio", False,
+         pedir("PUT", ruta("ventas/prueba-servicio2", t_vecino), dict(servicio, tipo="Arriendo"))[0])
+    caso("R25", "Otro vecino califica el servicio con 5 estrellas", True,
+         pedir("PUT", ruta(f"calificaciones/prueba-servicio/{uid_admin}", t_admin), 5)[0])
+    caso("R26", "El dueño intenta calificar su propio servicio", False,
+         pedir("PUT", ruta(f"calificaciones/prueba-servicio/{uid_vecino}", t_vecino), 5)[0])
+    caso("R27", "Calificación fuera de rango (6 estrellas)", False,
+         pedir("PUT", ruta(f"calificaciones/prueba-servicio/{uid_admin}", t_admin), 6)[0])
+    caso("R28", "Calificar a nombre de otro usuario", False,
+         pedir("PUT", ruta(f"calificaciones/prueba-servicio/{uid_vecino}", t_admin), 4)[0])
+    caso("R29", "El dueño marca su servicio como no disponible", True,
+         pedir("PUT", ruta("ventas/prueba-servicio/vendido", t_vecino), True)[0])
+    pedir("DELETE", ruta(f"calificaciones/prueba-servicio/{uid_admin}", t_admin))
+    pedir("DELETE", ruta("ventas/prueba-servicio", t_vecino))
+
     # Limpieza (el admin puede borrar anuncios y alertas; el dueño su producto)
     pedir("DELETE", ruta("anuncios/prueba-admin", t_admin))
     pedir("DELETE", ruta("alertas/prueba-alerta", t_admin))
